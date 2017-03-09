@@ -1,6 +1,6 @@
 const logger = require("jitsi-meet-logger").getLogger(__filename);
 
-import { replace } from '../util/helpers';
+import { reload, replace } from '../util/helpers';
 
 /**
  * The modules stores information about the URL used to start the conference and
@@ -67,7 +67,14 @@ export default class ConferenceUrl {
      * Reloads the conference using original URL with all of the parameters.
      */
     reload() {
-        logger.info("Reloading the conference using URL: " + this.originalURL);
-        replace(this.originalURL);
+        // Check if we are in iframe and reload with the reload() utility
+        // because replace() is not working on iframe.
+        if(window.self !== window.top) {
+            reload();
+        } else {
+            logger.info("Reloading the conference using URL: "
+                + this.originalURL);
+            replace(this.originalURL);
+        }
     }
 }

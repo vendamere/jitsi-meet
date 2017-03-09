@@ -1,11 +1,37 @@
-/* global APP */
-
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 
+import PageReloadFilmStripOnlyOverlay from './PageReloadFilmStripOnlyOverlay';
 import PageReloadOverlay from './PageReloadOverlay';
+import SuspendedFilmStripOnlyOverlay from './SuspendedFilmStripOnlyOverlay';
 import SuspendedOverlay from './SuspendedOverlay';
+import UserMediaPermissionsFilmStripOnlyOverlay
+    from './UserMediaPermissionsFilmStripOnlyOverlay';
 import UserMediaPermissionsOverlay from './UserMediaPermissionsOverlay';
+
+declare var APP: Object;
+declare var interfaceConfig: Object;
+
+/**
+ * Maps the overlay component that have to be displayed depending on the
+ * filmstrip only mode.
+ *
+ * @type {object}
+ */
+const filmStripOnlyModeToComponent = {
+    pageReload: {
+        filmStripOnly: PageReloadFilmStripOnlyOverlay,
+        nonFilmStripOnly: PageReloadOverlay
+    },
+    suspended: {
+        filmStripOnly: SuspendedFilmStripOnlyOverlay,
+        nonFilmStripOnly: SuspendedOverlay
+    },
+    userMediaPermissions: {
+        filmStripOnly: UserMediaPermissionsFilmStripOnlyOverlay,
+        nonFilmStripOnly: UserMediaPermissionsOverlay
+    }
+};
 
 /**
  * Implements a React Component that will display the correct overlay when
@@ -95,6 +121,25 @@ class OverlayContainer extends Component {
     }
 
     /**
+     * Initializes a new ReloadTimer instance.
+     *
+     * @param {Object} props - The read-only properties with which the new
+     * instance is to be initialized.
+     * @public
+     */
+    constructor(props) {
+        super(props);
+        this.state = {
+            /**
+             * Indicates whether the film strip only mode is enabled or not.
+             *
+             * @type {boolean}
+             */
+            filmStripOnly: interfaceConfig.filmStripOnly
+        };
+    }
+
+    /**
      * React Component method that executes once component is updated.
      *
      * @inheritdoc
@@ -117,25 +162,28 @@ class OverlayContainer extends Component {
      * @public
      */
     render() {
+        const componentMapKey
+            = this.state.filmStripOnly ? 'filmStripOnly' : 'nonFilmStripOnly';
+        let overlayComponent, props;
+
         if (this.props._connectionEstablished && this.props._haveToReload) {
-            return (
-                <PageReloadOverlay
-                    isNetworkFailure = { this.props._isNetworkFailure }
-                    reason = { this.props._reason } />
-            );
+            overlayComponent
+                = filmStripOnlyModeToComponent.pageReload[componentMapKey];
+            props = {
+                isNetworkFailure: this.props._isNetworkFailure,
+                reason: this.props._reason
+            };
+        } else if (this.props._suspendDetected) {
+            overlayComponent
+                = filmStripOnlyModeToComponent.suspended[componentMapKey];
+        } else if (this.props._isMediaPermissionPromptVisible) {
+            overlayComponent = filmStripOnlyModeToComponent
+                .userMediaPermissions[componentMapKey];
+            props = { browser: this.props._browser };
         }
 
-        if (this.props._suspendDetected) {
-            return (
-                <SuspendedOverlay />
-            );
-        }
-
-        if (this.props._isMediaPermissionPromptVisible) {
-            return (
-                <UserMediaPermissionsOverlay
-                    browser = { this.props._browser } />
-            );
+        if (overlayComponent !== undefined) {
+            return React.createElement(overlayComponent, props);
         }
 
         return null;
